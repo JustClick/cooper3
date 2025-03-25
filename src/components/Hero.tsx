@@ -6,15 +6,20 @@ const Hero = () => {
   const scrollToNextSection = () => {
     const aboutSection = document.getElementById('about');
     if (aboutSection) {
-      const yOffset = -80; // Offset to account for any fixed headers
-      const y = aboutSection.getBoundingClientRect().top + window.pageYOffset + yOffset;
-      window.scrollTo({ top: y, behavior: 'smooth' });
+      const yOffset = -80;
+      const y = aboutSection.getBoundingClientRect().top + window.scrollY + yOffset;
+      
+      // Disable smooth scrolling on mobile for better performance
+      window.scrollTo({
+        top: y,
+        behavior: window.innerWidth > 768 ? 'smooth' : 'auto'
+      });
     }
   };
 
   return (
     <div className="relative min-h-screen flex items-center justify-center">
-      {/* Background Image */}
+      {/* Background Image with loading optimization */}
       <div className="absolute inset-0 overflow-hidden">
         <div 
           className="absolute inset-0 bg-cover bg-center bg-no-repeat"
@@ -31,10 +36,10 @@ const Hero = () => {
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8 }}
+          transition={{ duration: 0.6 }}
           className="text-center max-w-4xl mx-auto"
         >
-          <h1 className="text-5xl md:text-7xl font-bold mb-6 leading-tight text-white">
+          <h1 className="text-4xl md:text-7xl font-bold mb-6 leading-tight text-white">
             Engineering Excellence in Every Product
           </h1>
           
