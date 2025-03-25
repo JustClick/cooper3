@@ -1,48 +1,96 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Menu, X } from 'lucide-react';
 
-const NavLink = ({ href, children, isScrolled }) => (
-  <a
-    href={href}
-    className={`px-4 py-2 rounded-md transition-colors duration-300 ${
-      isScrolled ? 'text-gray-600 hover:text-blue-600' : 'text-white hover:text-blue-200'
-    }`}
-    onClick={(e) => {
-      e.preventDefault();
-      const element = document.querySelector(href);
-      if (element) {
-        const yOffset = -80;
-        const y = element.getBoundingClientRect().top + window.pageYOffset + yOffset;
-        window.scrollTo({ top: y, behavior: 'smooth' });
-      }
-    }}
-  >
-    {children}
-  </a>
-);
+const scrollToElement = (elementId: string, offset: number = -80) => {
+  const element = document.getElementById(elementId);
+  if (element) {
+    // Force layout recalculation before scrolling
+    element.getBoundingClientRect();
+    
+    const y = element.getBoundingClientRect().top + window.scrollY + offset;
+    
+    // Immediate scroll for mobile, smooth for desktop
+    if (window.innerWidth <= 768) {
+      // Force immediate scroll on mobile
+      window.scrollTo(0, y);
+    } else {
+      window.scrollTo({
+        top: y,
+        behavior: 'smooth'
+      });
+    }
+  }
+};
+
+const NavLink = ({ href, children, isScrolled, onClick, isMobile = false }) => {
+  const handleClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // Extract the element ID and scroll
+    const elementId = href.replace('#', '');
+    
+    // Small delay to ensure menu animation completes
+    if (isMobile) {
+      onClick?.();
+      setTimeout(() => scrollToElement(elementId), 10);
+    } else {
+      scrollToElement(elementId);
+      onClick?.();
+    }
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={handleClick}
+      className={`text-left whitespace-nowrap px-4 py-2 rounded-md transition-colors duration-300 ${
+        isScrolled 
+          ? 'text-gray-600 hover:text-blue-600' 
+          : 'text-white hover:text-blue-200'
+      } ${
+        isMobile 
+          ? 'block w-full text-gray-600 hover:bg-gray-50 hover:text-blue-600'
+          : ''
+      }`}
+    >
+      {children}
+    </button>
+  );
+};
 
 const Navigation = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   useEffect(() => {
-    // Set initial scroll state
-    setIsScrolled(window.scrollY > 20);
-
-    const handleScroll = () => {
+    const checkScroll = () => {
       setIsScrolled(window.scrollY > 20);
+    };
+
+    checkScroll();
+    
+    const handleScroll = () => {
+      requestAnimationFrame(checkScroll);
     };
 
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  const toggleMenu = () => {
+    setIsMobileMenuOpen(!isMobileMenuOpen);
+  };
+
+  const closeMenu = () => {
+    setIsMobileMenuOpen(false);
+  };
+
   return (
     <motion.nav
       initial={false}
       animate={{ 
-        y: 0,
         backgroundColor: isScrolled ? 'rgba(255, 255, 255, 1)' : 'transparent',
         boxShadow: isScrolled ? '0 4px 6px -1px rgba(0, 0, 0, 0.1)' : 'none'
       }}
@@ -52,14 +100,17 @@ const Navigation = () => {
       <div className="max-w-7xl mx-auto px-4">
         <div className="flex items-center justify-between h-20">
           {/* Logo */}
-          <a href="#" className="flex items-center space-x-2">
+          <button 
+            onClick={() => scrollToElement('root', 0)}
+            className="flex items-center space-x-2"
+          >
             <span className={`text-2xl font-bold ${isScrolled ? 'text-blue-600' : 'text-white'}`}>
               Cooper<span className={isScrolled ? 'text-blue-500' : 'text-blue-200'}>Management</span>
             </span>
             <span className={`text-sm font-medium ${isScrolled ? 'text-gray-600' : 'text-blue-100'}`}>
               LLC
             </span>
-          </a>
+          </button>
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-2">
@@ -71,9 +122,11 @@ const Navigation = () => {
 
           {/* Mobile Menu Button */}
           <button
+            type="button"
             className="md:hidden p-2 rounded-md"
-            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            onClick={toggleMenu}
             aria-label="Toggle menu"
+            aria-expanded={isMobileMenuOpen}
           >
             {isMobileMenuOpen ? (
               <X className={isScrolled ? 'text-gray-900' : 'text-white'} />
@@ -84,46 +137,52 @@ const Navigation = () => {
         </div>
 
         {/* Mobile Navigation */}
-        <motion.div
-          initial={false}
-          animate={{
-            height: isMobileMenuOpen ? 'auto' : 0,
-            opacity: isMobileMenuOpen ? 1 : 0
-          }}
-          transition={{ duration: 0.2 }}
-          className={`md:hidden overflow-hidden ${isMobileMenuOpen ? 'bg-white shadow-lg rounded-b-xl' : ''}`}
-        >
-          <div className="px-2 pt-2 pb-3 space-y-1">
-            <a
-              href="#about"
-              className="block px-3 py-2 rounded-md text-gray-700 hover:bg-blue-50 hover:text-blue-600"
-              onClick={() => setIsMobileMenuOpen(false)}
+        <AnimatePresence>
+          {isMobileMenuOpen && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="md:hidden bg-white shadow-lg rounded-b-xl overflow-hidden"
             >
-              About
-            </a>
-            <a
-              href="#brands"
-              className="block px-3 py-2 rounded-md text-gray-700 hover:bg-blue-50 hover:text-blue-600"
-              onClick={() => setIsMobileMenuOpen(false)}
-            >
-              Our Brands
-            </a>
-            <a
-              href="#marketplaces"
-              className="block px-3 py-2 rounded-md text-gray-700 hover:bg-blue-50 hover:text-blue-600"
-              onClick={() => setIsMobileMenuOpen(false)}
-            >
-              Marketplaces
-            </a>
-            <a
-              href="#contact"
-              className="block px-3 py-2 rounded-md text-gray-700 hover:bg-blue-50 hover:text-blue-600"
-              onClick={() => setIsMobileMenuOpen(false)}
-            >
-              Contact
-            </a>
-          </div>
-        </motion.div>
+              <div className="flex flex-col py-2">
+                <NavLink 
+                  href="#about" 
+                  isScrolled={true} 
+                  onClick={closeMenu}
+                  isMobile={true}
+                >
+                  About
+                </NavLink>
+                <NavLink 
+                  href="#brands" 
+                  isScrolled={true} 
+                  onClick={closeMenu}
+                  isMobile={true}
+                >
+                  Our Brands
+                </NavLink>
+                <NavLink 
+                  href="#marketplaces" 
+                  isScrolled={true} 
+                  onClick={closeMenu}
+                  isMobile={true}
+                >
+                  Marketplaces
+                </NavLink>
+                <NavLink 
+                  href="#contact" 
+                  isScrolled={true} 
+                  onClick={closeMenu}
+                  isMobile={true}
+                >
+                  Contact
+                </NavLink>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </motion.nav>
   );
